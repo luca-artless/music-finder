@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Music Finder Grouper",
+  "version": "1.0",
+  "description": "Opens Music Finder searches together in a named Chrome tab group.",
+  "permissions": ["tabs", "tabGroups"],
+  "externally_connectable": {
+    "matches": ["https://luca-artless.github.io/*"]
+  },
+  "background": { "service_worker": "background.js" }
+}
