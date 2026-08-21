@@ -7,66 +7,211 @@
 <style>
   * { box-sizing: border-box; }
   body { font-family: system-ui, -apple-system, sans-serif; background:#0f0f0f;
-         color:#fff; display:flex; justify-content:center; padding:10vh 16px; margin:0; }
-  .card { width:100%; max-width:380px; background:#181818; border:1px solid #333;
+         color:#fff; display:flex; justify-content:center; padding:6vh 16px 12vh; margin:0; }
+  .card { width:100%; max-width:400px; background:#181818; border:1px solid #333;
           border-radius:14px; padding:22px; }
   h1 { margin:0 0 14px; font-size:16px; }
-  input { width:100%; padding:13px; font-size:15px; border-radius:8px;
+  input[type=text] { width:100%; padding:13px; font-size:15px; border-radius:8px;
           border:1px solid #333; background:#242424; color:#22d3ee; font-weight:700; }
-  a.btn { display:block; margin-top:10px; padding:13px; border-radius:8px; color:#fff;
-          text-decoration:none; font-weight:700; font-size:14px; transition:opacity .15s; }
-  .bc{background:#1da0c3} .bn{background:#14778f} .sc{background:#ff5500}
-  .sp{background:#1db954} .yt{background:#cc181e}
-  .off { opacity:.35; pointer-events:none; }
-  .hint { font-size:11px; color:#777; margin-top:14px; line-height:1.5; }
+  .presets { display:flex; gap:6px; margin:12px 0 4px; flex-wrap:wrap; }
+  .chip { background:#242424; border:1px solid #3a3a3a; color:#aaa; font-size:11px;
+          padding:5px 10px; border-radius:20px; cursor:pointer; font-weight:600; }
+  .chip:hover { border-color:#22d3ee; color:#22d3ee; }
+  .rows { margin:10px 0 4px; }
+  .row { display:flex; align-items:center; gap:10px; padding:9px 11px; margin-top:7px;
+         border-radius:8px; border-left:4px solid #666; background:#202020; }
+  .row input[type=checkbox] { width:17px; height:17px; accent-color:#22d3ee;
+         cursor:pointer; flex:none; }
+  .row label { flex:1; font-size:13px; font-weight:700; cursor:pointer; }
+  .row label .sub { font-weight:400; color:#888; font-size:11px; }
+  .one { color:#888; text-decoration:none; font-size:15px; padding:0 4px; flex:none; }
+  .one:hover { color:#22d3ee; }
+  #go { width:100%; margin-top:16px; padding:15px; font-size:15px; font-weight:800;
+        border:none; border-radius:9px; background:#22d3ee; color:#06232a; cursor:pointer; }
+  #go:disabled { background:#2a2a2a; color:#666; cursor:default; }
+  #warn { display:none; margin-top:14px; padding:11px; border-radius:8px;
+          background:#3a2a12; border:1px solid #7a5a22; font-size:11.5px;
+          color:#f5c869; line-height:1.55; }
+  .hint { font-size:11px; color:#666; margin-top:14px; line-height:1.6; }
 </style>
 </head>
 <body>
 <div class="card">
   <h1>🎧 Music Finder</h1>
-  <input id="q" placeholder="Artist - Title (Label)" autocomplete="off" autofocus>
-  <a class="btn bc" id="bc" target="_blank" rel="noopener">💙 Bandcamp (Google site:)</a>
-  <a class="btn bn" id="bn" target="_blank" rel="noopener">💙 Bandcamp (native)</a>
-  <a class="btn sc" id="sc" target="_blank" rel="noopener">🧡 SoundCloud</a>
-  <a class="btn sp" id="sp" target="_blank" rel="noopener">🟢 Spotify</a>
-  <a class="btn yt" id="yt" target="_blank" rel="noopener">🔴 YouTube</a>
-  <div class="hint">Enter = Bandcamp · Esc = clear<br>Label parentheticals are stripped for Spotify &amp; SoundCloud.</div>
+  <input type="text" id="q" placeholder="Artist - Title (Label)" autocomplete="off" autofocus>
+
+  <div class="presets">
+    <span class="chip" data-preset="digging">⛏ Digging</span>
+    <span class="chip" data-preset="streaming">▶ Streaming</span>
+    <span class="chip" data-preset="all">✦ All</span>
+    <span class="chip" data-preset="none">✕ None</span>
+  </div>
+
+  <div class="rows" id="rows"></div>
+
+  <button id="go">Search selected</button>
+
+  <div id="warn">
+    ⚠️ Chrome blocked some tabs. Click the blocked-popup icon in the address bar
+    (right side) and choose <b>“Always allow pop-ups and redirects from this
+    site”</b>. One time only — after that every tab opens normally.
+  </div>
+
+  <div class="hint">
+    Enter = search selected · Esc = clear · ↗ = open that one only<br>
+    Selection is remembered. Label parentheticals are stripped for Spotify &amp; SoundCloud.
+  </div>
 </div>
+
 <script>
-  var P = "https://";
-  var BUILD = {
-    bc: function (v) { return P + "www.google.com/search?q=" + encodeURIComponent("site:bandcamp.com/album " + v); },
-    bn: function (v) { return P + "bandcamp.com/search?item_type=a&q=" + encodeURIComponent(v); },
-    sc: function (v) { return P + "soundcloud.com/search?q=" + encodeURIComponent(clean(v)); },
-    sp: function (v) { return P + "open.spotify.com/search/" + encodeURIComponent(clean(v)); },
-    yt: function (v) { return P + "www.youtube.com/results?search_query=" + encodeURIComponent(v); }
-  };
+var P = "https://";
 
-  function clean(v) { return v.replace(/\s*\([^)]*\)\s*/g, " ").trim(); }
+function clean(v) { return v.replace(/\s*\([^)]*\)\s*/g, " ").trim(); }
 
-  var box = document.getElementById("q");
+var PLATFORMS = [
+  { k:"bc", name:"Bandcamp",   sub:"Google site:",  icon:"💙", color:"#1da0c3",
+    url:function(v){ return P+"www.google.com/search?q="+encodeURIComponent("site:bandcamp.com/album "+v); } },
+  { k:"bn", name:"Bandcamp",   sub:"native search", icon:"💙", color:"#14778f",
+    url:function(v){ return P+"bandcamp.com/search?item_type=a&q="+encodeURIComponent(v); } },
+  { k:"dc", name:"Discogs",    sub:"releases",      icon:"⚫", color:"#8f8f8f",
+    url:function(v){ return P+"www.discogs.com/search/?type=release&q="+encodeURIComponent(clean(v)); } },
+  { k:"sc", name:"SoundCloud", sub:"",              icon:"🧡", color:"#ff5500",
+    url:function(v){ return P+"soundcloud.com/search?q="+encodeURIComponent(clean(v)); } },
+  { k:"sp", name:"Spotify",    sub:"",              icon:"🟢", color:"#1db954",
+    url:function(v){ return P+"open.spotify.com/search/"+encodeURIComponent(clean(v)); } },
+  { k:"yt", name:"YouTube",    sub:"",              icon:"🔴", color:"#cc181e",
+    url:function(v){ return P+"www.youtube.com/results?search_query="+encodeURIComponent(v); } }
+];
 
-  function sync() {
-    var v = box.value.trim();
-    for (var k in BUILD) {
-      var a = document.getElementById(k);
-      if (v) { a.href = BUILD[k](v); a.className = a.className.replace(" off", ""); }
-      else { a.removeAttribute("href"); if (a.className.indexOf("off") < 0) a.className += " off"; }
-    }
-    try { if (v) localStorage.setItem("last", v); } catch (e) {}
-  }
+var PRESETS = {
+  digging:   ["bc","dc","sc"],
+  streaming: ["sp","yt"],
+  all:       PLATFORMS.map(function(p){ return p.k; }),
+  none:      []
+};
 
-  var param = new URLSearchParams(location.search).get("q");
-  if (param) { box.value = param; }
-  else { try { box.value = localStorage.getItem("last") || ""; } catch (e) {} }
-  box.select();
-  sync();
+var box  = document.getElementById("q");
+var go   = document.getElementById("go");
+var warn = document.getElementById("warn");
+var rows = document.getElementById("rows");
 
-  box.addEventListener("input", sync);
-  box.addEventListener("keydown", function (e) {
-    if (e.key === "Enter") document.getElementById("bc").click();
-    if (e.key === "Escape") { box.value = ""; sync(); }
+// ---- build rows ----
+PLATFORMS.forEach(function (p) {
+  var row = document.createElement("div");
+  row.className = "row";
+  row.style.borderLeftColor = p.color;
+
+  var cb = document.createElement("input");
+  cb.type = "checkbox"; cb.id = "cb-" + p.k; cb.dataset.k = p.k;
+
+  var lb = document.createElement("label");
+  lb.htmlFor = cb.id;
+  lb.innerHTML = p.icon + " " + p.name + (p.sub ? ' <span class="sub">' + p.sub + "</span>" : "");
+
+  var one = document.createElement("a");
+  one.className = "one"; one.textContent = "↗";
+  one.target = "_blank"; one.rel = "noopener";
+  one.title = "Open only " + p.name;
+  one.dataset.k = p.k;
+
+  row.appendChild(cb); row.appendChild(lb); row.appendChild(one);
+  rows.appendChild(row);
+
+  cb.addEventListener("change", persist);
+});
+
+// ---- state helpers ----
+function selected() {
+  return PLATFORMS.filter(function (p) {
+    return document.getElementById("cb-" + p.k).checked;
+  }).map(function (p) { return p.k; });
+}
+
+function setSelection(keys) {
+  PLATFORMS.forEach(function (p) {
+    document.getElementById("cb-" + p.k).checked = keys.indexOf(p.k) > -1;
   });
+  sync();
+}
+
+function persist() {
+  try { localStorage.setItem("sel", selected().join(",")); } catch (e) {}
+  sync();
+}
+
+function sync() {
+  var v = box.value.trim();
+  var n = selected().length;
+  go.disabled = !v || n === 0;
+  go.textContent = n === 0 ? "Select at least one platform"
+                 : !v      ? "Type something to search"
+                 : "Search selected (" + n + ")";
+  PLATFORMS.forEach(function (p) {
+    var a = document.querySelector('.one[data-k="' + p.k + '"]');
+    if (v) { a.href = p.url(v); a.style.opacity = 1; }
+    else { a.removeAttribute("href"); a.style.opacity = .3; }
+  });
+  try { if (v) localStorage.setItem("last", v); } catch (e) {}
+}
+
+// ---- launching ----
+function openViaLink(url) {
+  var a = document.createElement("a");
+  a.href = url; a.target = "_blank"; a.rel = "noopener";
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+function run() {
+  var v = box.value.trim();
+  var keys = selected();
+  if (!v || !keys.length) return;
+
+  warn.style.display = "none";
+  var map = {};
+  PLATFORMS.forEach(function (p) { map[p.k] = p; });
+
+  // first one via a real link — never blocked
+  openViaLink(map[keys[0]].url(v));
+
+  // the rest via popups
+  var blocked = 0;
+  for (var i = 1; i < keys.length; i++) {
+    var w = window.open(map[keys[i]].url(v), "_blank");
+    if (!w) blocked++;
+  }
+  if (blocked > 0) warn.style.display = "block";
+}
+
+// ---- init ----
+var params = new URLSearchParams(location.search);
+var pq = params.get("q");
+var ps = params.get("s");
+
+if (pq) box.value = pq;
+else { try { box.value = localStorage.getItem("last") || ""; } catch (e) {} }
+
+var initSel;
+if (ps) initSel = PRESETS[ps] || ps.split(",");
+else {
+  var saved = null;
+  try { saved = localStorage.getItem("sel"); } catch (e) {}
+  initSel = saved !== null ? (saved ? saved.split(",") : []) : PRESETS.digging;
+}
+setSelection(initSel);
+box.select();
+
+box.addEventListener("input", sync);
+box.addEventListener("keydown", function (e) {
+  if (e.key === "Enter") run();
+  if (e.key === "Escape") { box.value = ""; sync(); }
+});
+go.addEventListener("click", run);
+document.querySelectorAll(".chip").forEach(function (c) {
+  c.addEventListener("click", function () {
+    setSelection(PRESETS[c.dataset.preset]);
+    persist();
+  });
+});
 </script>
 </body>
 </html>
