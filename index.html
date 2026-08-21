@@ -56,7 +56,7 @@
   <h1>🎧 Music Finder</h1>
   <div class="mode" id="mode">checking grouper…</div>
 
-  <input type="text" id="q" placeholder="Artist - Title (Label)" autocomplete="off" autofocus>
+  <input type="text" id="q" placeholder="Artist - Album (Label)" autocomplete="off" autofocus>
 
   <div class="presets">
     <span class="chip" data-preset="digging">⛏ Digging</span>
@@ -92,7 +92,12 @@
 </div>
 
 <script>
-// Add one ID per machine. Unpacked extensions get a different ID per folder path.
+/* ────────────────────────────────────────────────────────────────
+   🔴 REPLACE THE STRING BELOW WITH YOUR REAL EXTENSION ID 🔴
+   Get it from: chrome://extensions → Details on the
+   ~/Development/music-finder/extension card → read it from the
+   address bar (?options=THE_ID). 32 characters, letters a–p only.
+   ──────────────────────────────────────────────────────────────── */
 var EXT_IDS = [
   "eealalcjpafalomikjopkapfcpiimbdj"
   // , "PASTE_SECOND_MAC_ID_HERE"
@@ -119,7 +124,7 @@ var PLATFORMS = [
 ];
 
 var PRESETS = {
-  digging:   ["bn","dc","sc"],
+  digging:   ["bn","bc","dc","sc"],
   streaming: ["sp","yt"],
   all:       PLATFORMS.map(function(p){ return p.k; }),
   none:      []
@@ -184,7 +189,7 @@ function setSelection(keys) {
 }
 
 function persist() {
-  try { localStorage.setItem("sel", selected().join(",")); } catch (e) {}
+  try { localStorage.setItem("sel2", selected().join(",")); } catch (e) {}
   sync();
 }
 
@@ -338,7 +343,7 @@ var initSel;
 if (ps) initSel = PRESETS[ps] || ps.split(",");
 else {
   var saved = null;
-  try { saved = localStorage.getItem("sel"); } catch (e) {}
+  try { saved = localStorage.getItem("sel2"); } catch (e) {}
   initSel = saved !== null ? (saved ? saved.split(",") : []) : PRESETS.digging;
 }
 setSelection(initSel);
@@ -352,6 +357,19 @@ grp.addEventListener("change", function () {
   try { localStorage.setItem("grp", groupOn ? "1" : "0"); } catch (e) {}
   renderMode();
   say(groupOn ? "grouping on" : "grouping off");
+});
+
+// clicking into the field selects everything (first click only, like the address bar)
+var wasBlurred = false;
+box.addEventListener("mousedown", function () {
+  wasBlurred = document.activeElement !== box;
+});
+box.addEventListener("mouseup", function (e) {
+  if (wasBlurred && box.value) { e.preventDefault(); box.select(); }
+  wasBlurred = false;
+});
+box.addEventListener("focus", function () {
+  if (box.value) setTimeout(function () { box.select(); }, 0);
 });
 
 box.addEventListener("input", function () { sync(); blockwrap.style.display = "none"; });
