@@ -29,9 +29,12 @@
   #go { width:100%; margin-top:16px; padding:15px; font-size:15px; font-weight:800;
         border:none; border-radius:9px; background:#22d3ee; color:#06232a; cursor:pointer; }
   #go:disabled { background:#2a2a2a; color:#666; cursor:default; }
-  #warn { display:none; margin-top:14px; padding:11px; border-radius:8px;
-          background:#3a2a12; border:1px solid #7a5a22; font-size:11.5px;
-          color:#f5c869; line-height:1.55; }
+  #blockwrap { display:none; margin-top:14px; padding:12px; border-radius:9px;
+          background:#3a2a12; border:1px solid #7a5a22; }
+  #blockwrap .msg { font-size:11.5px; color:#f5c869; line-height:1.55; margin-bottom:9px; }
+  #blockwrap a.fb { display:block; margin-top:6px; padding:11px; border-radius:7px;
+          color:#fff; text-decoration:none; font-weight:700; font-size:13px; }
+  #blockwrap .fix { font-size:10.5px; color:#c9a55f; margin-top:10px; line-height:1.5; }
   .hint { font-size:11px; color:#666; margin-top:14px; line-height:1.6; }
 </style>
 </head>
@@ -51,15 +54,17 @@
 
   <button id="go">Search selected</button>
 
-  <div id="warn">
-    ⚠️ Chrome blocked some tabs. Click the blocked-popup icon in the address bar
-    (right side) and choose <b>“Always allow pop-ups and redirects from this
-    site”</b>. One time only — after that every tab opens normally.
+  <div id="blockwrap">
+    <div class="msg">⚠️ Chrome blocked these tabs. Click to open them:</div>
+    <div id="fallback"></div>
+    <div class="fix">To stop this permanently: open
+      <b>chrome://settings/content/popups</b> → under “Allowed to send pop-ups”
+      click <b>Add</b> → paste this site’s address.</div>
   </div>
 
   <div class="hint">
     Enter = search selected · Esc = clear · ↗ = open that one only<br>
-    Selection is remembered. Label parentheticals are stripped for Spotify &amp; SoundCloud.
+    Platform selection is remembered. Label parentheticals are stripped for Discogs, Spotify &amp; SoundCloud.
   </div>
 </div>
 
@@ -90,10 +95,14 @@ var PRESETS = {
   none:      []
 };
 
-var box  = document.getElementById("q");
-var go   = document.getElementById("go");
-var warn = document.getElementById("warn");
-var rows = document.getElementById("rows");
+var MAP = {};
+PLATFORMS.forEach(function (p) { MAP[p.k] = p; });
+
+var box      = document.getElementById("q");
+var go       = document.getElementById("go");
+var rows     = document.getElementById("rows");
+var blockwrap = document.getElementById("blockwrap");
+var fallback = document.getElementById("fallback");
 
 // ---- build rows ----
 PLATFORMS.forEach(function (p) {
@@ -102,7 +111,7 @@ PLATFORMS.forEach(function (p) {
   row.style.borderLeftColor = p.color;
 
   var cb = document.createElement("input");
-  cb.type = "checkbox"; cb.id = "cb-" + p.k; cb.dataset.k = p.k;
+  cb.type = "checkbox"; cb.id = "cb-" + p.k;
 
   var lb = document.createElement("label");
   lb.htmlFor = cb.id;
@@ -120,7 +129,7 @@ PLATFORMS.forEach(function (p) {
   cb.addEventListener("change", persist);
 });
 
-// ---- state helpers ----
+// ---- state ----
 function selected() {
   return PLATFORMS.filter(function (p) {
     return document.getElementById("cb-" + p.k).checked;
@@ -151,7 +160,6 @@ function sync() {
     if (v) { a.href = p.url(v); a.style.opacity = 1; }
     else { a.removeAttribute("href"); a.style.opacity = .3; }
   });
-  try { if (v) localStorage.setItem("last", v); } catch (e) {}
 }
 
 // ---- launching ----
@@ -161,25 +169,42 @@ function openViaLink(url) {
   document.body.appendChild(a); a.click(); a.remove();
 }
 
+function showBlocked(keys, v) {
+  fallback.innerHTML = "";
+  if (!keys.length) { blockwrap.style.display = "none"; return; }
+  keys.forEach(function (k) {
+    var p = MAP[k];
+    var a = document.createElement("a");
+    a.className = "fb";
+    a.href = p.url(v);
+    a.target = "_blank"; a.rel = "noopener";
+    a.style.background = p.color;
+    a.textContent = p.icon + " Open " + p.name + (p.sub ? " (" + p.sub + ")" : "");
+    a.addEventListener("click", function () {
+      a.style.opacity = .35; a.textContent = "✓ opened";
+    });
+    fallback.appendChild(a);
+  });
+  blockwrap.style.display = "block";
+}
+
 function run() {
   var v = box.value.trim();
   var keys = selected();
   if (!v || !keys.length) return;
 
-  warn.style.display = "none";
-  var map = {};
-  PLATFORMS.forEach(function (p) { map[p.k] = p; });
+  blockwrap.style.display = "none";
 
   // first one via a real link — never blocked
-  openViaLink(map[keys[0]].url(v));
+  openViaLink(MAP[keys[0]].url(v));
 
-  // the rest via popups
-  var blocked = 0;
+  // the rest via popups; collect any that got blocked
+  var blocked = [];
   for (var i = 1; i < keys.length; i++) {
-    var w = window.open(map[keys[i]].url(v), "_blank");
-    if (!w) blocked++;
+    var w = window.open(MAP[keys[i]].url(v), "_blank");
+    if (!w) blocked.push(keys[i]);
   }
-  if (blocked > 0) warn.style.display = "block";
+  showBlocked(blocked, v);
 }
 
 // ---- init ----
@@ -187,8 +212,8 @@ var params = new URLSearchParams(location.search);
 var pq = params.get("q");
 var ps = params.get("s");
 
-if (pq) box.value = pq;
-else { try { box.value = localStorage.getItem("last") || ""; } catch (e) {} }
+// field starts EMPTY unless ?q= was passed
+box.value = pq ? pq : "";
 
 var initSel;
 if (ps) initSel = PRESETS[ps] || ps.split(",");
@@ -198,12 +223,13 @@ else {
   initSel = saved !== null ? (saved ? saved.split(",") : []) : PRESETS.digging;
 }
 setSelection(initSel);
+box.focus();
 box.select();
 
-box.addEventListener("input", sync);
+box.addEventListener("input", function () { sync(); blockwrap.style.display = "none"; });
 box.addEventListener("keydown", function (e) {
   if (e.key === "Enter") run();
-  if (e.key === "Escape") { box.value = ""; sync(); }
+  if (e.key === "Escape") { box.value = ""; sync(); blockwrap.style.display = "none"; }
 });
 go.addEventListener("click", run);
 document.querySelectorAll(".chip").forEach(function (c) {
