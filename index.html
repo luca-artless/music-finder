@@ -1,389 +1,440 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>🎧 Music Finder</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Music Finder</title>
 <style>
-  * { box-sizing: border-box; }
-  body { font-family: system-ui, -apple-system, sans-serif; background:#0f0f0f;
-         color:#fff; display:flex; justify-content:center; padding:6vh 16px 12vh; margin:0; }
-  .card { width:100%; max-width:400px; background:#181818; border:1px solid #333;
-          border-radius:14px; padding:22px; }
-  h1 { margin:0 0 4px; font-size:16px; }
-  .mode { font-size:10.5px; color:#666; margin-bottom:12px; }
-  .mode b { color:#22d3ee; }
-  input[type=text] { width:100%; padding:13px; font-size:15px; border-radius:8px;
-          border:1px solid #333; background:#242424; color:#22d3ee; font-weight:700; }
-  .presets { display:flex; gap:6px; margin:12px 0 4px; flex-wrap:wrap; }
-  .chip { background:#242424; border:1px solid #3a3a3a; color:#aaa; font-size:11px;
-          padding:5px 10px; border-radius:20px; cursor:pointer; font-weight:600; }
-  .chip:hover { border-color:#22d3ee; color:#22d3ee; }
-  .rows { margin:10px 0 4px; }
-  .row { display:flex; align-items:center; gap:10px; padding:9px 11px; margin-top:7px;
-         border-radius:8px; border-left:4px solid #666; background:#202020; }
-  .row input[type=checkbox] { width:17px; height:17px; accent-color:#22d3ee;
-         cursor:pointer; flex:none; }
-  .row label { flex:1; font-size:13px; font-weight:700; cursor:pointer; }
-  .row label .sub { font-weight:400; color:#888; font-size:11px; }
-  .one { color:#888; text-decoration:none; font-size:15px; padding:0 4px; flex:none; }
-  .one:hover { color:#22d3ee; }
-  .opt { display:flex; align-items:center; gap:9px; margin-top:12px;
-         padding-top:12px; border-top:1px solid #2a2a2a; }
-  .opt input[type=checkbox] { width:16px; height:16px; accent-color:#22d3ee;
-         cursor:pointer; flex:none; }
-  .opt label { font-size:12px; color:#bbb; font-weight:600; cursor:pointer; }
-  .opt label .sub { display:block; font-weight:400; color:#666; font-size:10.5px;
-         margin-top:2px; }
-  .opt.disabled { opacity:.4; }
-  .opt.disabled label { cursor:default; }
-  #go { width:100%; margin-top:14px; padding:15px; font-size:15px; font-weight:800;
-        border:none; border-radius:9px; background:#22d3ee; color:#06232a; cursor:pointer; }
-  #go:disabled { background:#2a2a2a; color:#666; cursor:default; }
-  #status { display:none; margin-top:11px; font-size:11.5px; color:#4ade80;
-        text-align:center; font-weight:600; }
-  #blockwrap { display:none; margin-top:14px; padding:12px; border-radius:9px;
-          background:#3a2a12; border:1px solid #7a5a22; }
-  #blockwrap .msg { font-size:11.5px; color:#f5c869; line-height:1.55; margin-bottom:9px; }
-  #blockwrap a.fb { display:block; margin-top:6px; padding:11px; border-radius:7px;
-          color:#fff; text-decoration:none; font-weight:700; font-size:13px; }
-  #blockwrap .fix { font-size:10.5px; color:#c9a55f; margin-top:10px; line-height:1.5; }
-  .hint { font-size:11px; color:#666; margin-top:14px; line-height:1.6; }
+  :root { --bg:#0f0f0f; --card:#181818; --line:#333; --ink:#e8e8e8; --dim:#8a8a8a; --accent:#22d3ee; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    padding:6vh 16px 12vh; display:flex; justify-content:center; }
+  .card { width:100%; max-width:400px; background:var(--card); border:1px solid var(--line);
+    border-radius:14px; padding:18px; }
+  h1 { margin:0 0 14px; font-size:15px; font-weight:600; letter-spacing:.2px; }
+  h1 span { color:var(--dim); font-weight:400; }
+  input#q { width:100%; padding:11px 12px; background:#242424; border:1px solid var(--line);
+    border-radius:9px; color:var(--accent); font-weight:600; font-size:14px; outline:none; }
+  input#q:focus { border-color:var(--accent); }
+  #cat { display:none; margin:8px 0 0; font-size:12px; color:#c9a227; }
+  .segs { display:flex; gap:6px; margin:14px 0 4px; }
+  .seg { flex:1; padding:8px 0; text-align:center; background:#202020; border:1px solid var(--line);
+    border-radius:9px; color:var(--dim); font-size:13px; cursor:pointer; user-select:none; }
+  .seg:hover { color:var(--ink); }
+  .seg.on { background:#0e2c33; border-color:var(--accent); color:var(--accent); font-weight:600; }
+  .row { display:flex; align-items:center; gap:9px; padding:7px 2px; }
+  .row input { accent-color:var(--accent); width:16px; height:16px; cursor:pointer; }
+  .row label { flex:1; cursor:pointer; }
+  .row label .sub { color:var(--dim); font-weight:400; }
+  .dot { width:9px; height:9px; border-radius:50%; flex:none; }
+  .one { color:var(--dim); text-decoration:none; padding:0 4px; font-size:13px; }
+  .one:hover { color:var(--accent); }
+  .opt { display:flex; align-items:center; gap:9px; margin-top:12px; padding-top:12px;
+    border-top:1px solid var(--line); }
+  .opt.disabled { opacity:.45; }
+  .opt .txt { flex:1; font-size:13px; }
+  .opt .txt .sub2 { display:block; color:var(--dim); font-size:12px; }
+  button#go { width:100%; margin-top:14px; padding:12px; background:var(--accent); border:0;
+    border-radius:9px; color:#06232a; font-weight:700; font-size:14px; cursor:pointer; }
+  button#go[disabled] { background:#2a2a2a; color:#666; cursor:not-allowed; }
+  #status { margin:10px 0 0; font-size:12px; color:#4ade80; min-height:16px; }
+  #blockwrap { display:none; margin-top:12px; padding:10px; background:#3a2a12;
+    border:1px solid #7a5a22; border-radius:9px; }
+  #blockwrap p { margin:0 0 8px; font-size:12px; }
+  .fb { display:block; color:var(--accent); font-size:13px; padding:3px 0; }
+  .hint { margin:14px 0 0; font-size:11px; color:#666; line-height:1.9; }
+  kbd { background:#242424; border:1px solid var(--line); border-radius:4px; padding:1px 5px;
+    font-size:10px; }
 </style>
 </head>
 <body>
 <div class="card">
-  <h1>🎧 Music Finder</h1>
-  <div class="mode" id="mode">checking grouper…</div>
+  <h1 id="mode">Music Finder</h1>
 
-  <input type="text" id="q" placeholder="Artist - Album (Label)" autocomplete="off" autofocus>
+  <input id="q" placeholder="Artist - Album (Label)" autocomplete="off" spellcheck="false" />
+  <p id="cat">🏷 looks like a catalogue number — shops will search it as-is</p>
 
-  <div class="presets">
-    <span class="chip" data-preset="digging">⛏ Digging</span>
-    <span class="chip" data-preset="streaming">▶ Streaming</span>
-    <span class="chip" data-preset="all">✦ All</span>
-    <span class="chip" data-preset="none">✕ None</span>
-  </div>
-
-  <div class="rows" id="rows"></div>
+  <div class="segs" id="segs"></div>
+  <div id="rows"></div>
 
   <div class="opt" id="grpwrap">
-    <input type="checkbox" id="grp" checked>
-    <label for="grp">🗂 Group tabs
-      <span class="sub" id="grpsub">results open together in one named group</span>
-    </label>
+    <input type="checkbox" id="grp" />
+    <span class="txt">🗂 Group tabs<span class="sub2" id="grpsub"></span></span>
   </div>
 
-  <button id="go">Search selected</button>
-  <div id="status"></div>
+  <button id="go">Search</button>
+  <p id="status"></p>
 
   <div id="blockwrap">
-    <div class="msg">⚠️ Chrome blocked these tabs. Click to open them:</div>
+    <p>⚠️ Chrome blocked some tabs. Click to open them:</p>
     <div id="fallback"></div>
-    <div class="fix">To stop this permanently: open
-      <b>chrome://settings/content/popups</b> → under “Allowed to send pop-ups”
-      click <b>Add</b> → paste this site’s address.</div>
   </div>
 
-  <div class="hint">
-    Enter = search selected · Esc = clear · ↗ = open that one only<br>
-    To close a group: right-click its name in the tab strip → <b>Close group</b>.
-  </div>
+  <p class="hint">
+    <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> switch set &middot;
+    <kbd>Enter</kbd> search &middot;
+    <kbd>&#8984;</kbd>+<kbd>Enter</kbd> everything &middot;
+    <kbd>Esc</kbd> clear
+  </p>
 </div>
 
 <script>
-/* ────────────────────────────────────────────────────────────────
-   🔴 REPLACE THE STRING BELOW WITH YOUR REAL EXTENSION ID 🔴
-   Get it from: chrome://extensions → Details on the
-   ~/Development/music-finder/extension card → read it from the
-   address bar (?options=THE_ID). 32 characters, letters a–p only.
-   ──────────────────────────────────────────────────────────────── */
+/* ==========================================================================
+   PASTE YOUR REAL EXTENSION ID BELOW — the line marked with >>>
+   Get it from chrome://extensions -> Details on "Music Finder Grouper".
+   The address bar will end with ?options=THE_ID
+   32 characters, letters a-p only, no digits.
+   ========================================================================== */
 var EXT_IDS = [
-  "eealalcjpafalomikjopkapfcpiimbdj"
-  // , "PASTE_SECOND_MAC_ID_HERE"
+  "eealalcjpafalomikjopkapfcpiimbdj"        /* >>> replace this string <<< */
 ];
-var EXT_ID = null;
 
 var P = "https://";
+var E = encodeURIComponent;
 
-function clean(v) { return v.replace(/\s*\([^)]*\)\s*/g, " ").trim(); }
+/* ---------- query shaping -------------------------------------------------
+   Different sites want different things. One shared cleaner was making the
+   vinyl shops return nothing, so each platform now picks its own.
+   raw()      full string, parentheses and all      (Google, YouTube)
+   clean()    drops "(Label)"                       (Bandcamp, Discogs, streaming)
+   terse()    drops "(Label)" and the " - "         (all five shops)
+   pathSafe() terse, minus characters that would break a URL path (Deejay.de)
+-------------------------------------------------------------------------- */
+function raw(v)   { return v.trim(); }
+function clean(v) { return v.replace(/\s*\([^)]*\)\s*/g, " ").replace(/\s+/g, " ").trim(); }
+function terse(v) { return clean(v).replace(/\s+-\s+/g, " ").trim(); }
+function pathSafe(v) { return terse(v).replace(/[\/?#]/g, " ").replace(/\s+/g, " ").trim(); }
 
-var PLATFORMS = [
-  { k:"bn", name:"Bandcamp",   sub:"native",     icon:"💙", color:"#1da0c3",
-    url:function(v){ return P+"bandcamp.com/search?item_type=a&q="+encodeURIComponent(clean(v)); } },
-  { k:"bc", name:"Bandcamp",   sub:"via Google", icon:"💙", color:"#14778f",
-    url:function(v){ return P+"www.google.com/search?q="+encodeURIComponent("site:bandcamp.com/album "+v); } },
-  { k:"dc", name:"Discogs",    sub:"releases",   icon:"⚫", color:"#8f8f8f",
-    url:function(v){ return P+"www.discogs.com/search/?type=release&q="+encodeURIComponent(clean(v)); } },
-  { k:"sc", name:"SoundCloud", sub:"",           icon:"🧡", color:"#ff5500",
-    url:function(v){ return P+"soundcloud.com/search?q="+encodeURIComponent(clean(v)); } },
-  { k:"sp", name:"Spotify",    sub:"",           icon:"🟢", color:"#1db954",
-    url:function(v){ return P+"open.spotify.com/search/"+encodeURIComponent(clean(v)); } },
-  { k:"yt", name:"YouTube",    sub:"",           icon:"🔴", color:"#cc181e",
-    url:function(v){ return P+"www.youtube.com/results?search_query="+encodeURIComponent(v); } }
-];
+/* Short, has letters AND digits, no " - " separator => probably a cat number,
+   so send it to the shops untouched. Cheap heuristic, harmless when wrong. */
+function isCat(v) {
+  var s = v.trim();
+  if (!s || s.length > 14) { return false; }
+  if (s.indexOf(" - ") >= 0) { return false; }
+  return /[a-z]/i.test(s) && /[0-9]/.test(s);
+}
 
-var PRESETS = {
-  digging:   ["bn","bc","dc","sc"],
-  streaming: ["sp","yt"],
-  all:       PLATFORMS.map(function(p){ return p.k; }),
-  none:      []
+var PLATFORMS = {
+  bn: { name:"Bandcamp", sub:"native", dot:"#1da0c3", url:function (v, c) {
+        return P + "bandcamp.com/search?item_type=a&q=" + E(c ? raw(v) : clean(v)); } },
+  bg: { name:"Bandcamp", sub:"via Google", dot:"#14778f", url:function (v) {
+        return P + "www.google.com/search?q=" + E("site:bandcamp.com/album " + raw(v)); } },
+  dc: { name:"Discogs", sub:"releases", dot:"#8f8f8f", url:function (v, c) {
+        return P + "www.discogs.com/search/?type=release&q=" + E(c ? raw(v) : clean(v)); } },
+  sc: { name:"SoundCloud", sub:"", dot:"#ff5500", url:function (v, c) {
+        return P + "soundcloud.com/search?q=" + E(c ? raw(v) : clean(v)); } },
+  sp: { name:"Spotify", sub:"", dot:"#1db954", url:function (v) {
+        return P + "open.spotify.com/search/" + E(clean(v)); } },
+  yt: { name:"YouTube", sub:"", dot:"#cc181e", url:function (v) {
+        return P + "www.youtube.com/results?search_query=" + E(raw(v)); } },
+  bp: { name:"Beatport", sub:"", dot:"#a4ff00", url:function (v, c) {
+        return P + "www.beatport.com/search?q=" + E(c ? raw(v) : clean(v)); } },
+  tx: { name:"Traxsource", sub:"", dot:"#00a0dc", url:function (v, c) {
+        return P + "www.traxsource.com/search?term=" + E(c ? raw(v) : terse(v)); } },
+  ju: { name:"Juno Records", sub:"vinyl", dot:"#f5a623", url:function (v, c) {
+        return P + "www.juno.co.uk/search/?q%5Ball%5D%5B%5D=" + E(c ? raw(v) : terse(v))
+             + "&hide_forthcoming=0"; } },
+  dj: { name:"Deejay.de", sub:"", dot:"#e2001a", url:function (v, c) {
+        /* path-based search: the query IS the path, there is no ?q= */
+        return P + "www.deejay.de/" + E(c ? raw(v) : pathSafe(v)); } },
+  hw: { name:"Hardwax", sub:"", dot:"#cccccc", url:function (v, c) {
+        return P + "hardwax.com/?search=" + E(c ? raw(v) : terse(v)); } }
 };
 
-var MAP = {};
-PLATFORMS.forEach(function (p) { MAP[p.k] = p; });
+var INTENTS = {
+  dig:    { label:"Dig",    emoji:"\u26CF", color:"cyan",   keys:["bn","bg","dc","sc"] },
+  buy:    { label:"Buy",    emoji:"\uD83D\uDED2", color:"orange",
+            keys:["bp","tx","ju","dj","hw"] },
+  listen: { label:"Listen", emoji:"\u25B6", color:"green",  keys:["sp","yt"] }
+};
+var ORDER = ["dig", "buy", "listen"];
 
 var box       = document.getElementById("q");
-var go        = document.getElementById("go");
-var rows      = document.getElementById("rows");
+var segsEl    = document.getElementById("segs");
+var rowsEl    = document.getElementById("rows");
+var goEl      = document.getElementById("go");
 var statusEl  = document.getElementById("status");
 var modeEl    = document.getElementById("mode");
-var blockwrap = document.getElementById("blockwrap");
-var fallback  = document.getElementById("fallback");
+var catEl     = document.getElementById("cat");
 var grp       = document.getElementById("grp");
 var grpwrap   = document.getElementById("grpwrap");
 var grpsub    = document.getElementById("grpsub");
+var blockwrap = document.getElementById("blockwrap");
+var fallback  = document.getElementById("fallback");
 
-var extReady = false;   // is the companion extension installed & answering?
-var groupOn  = true;    // does the user WANT grouping? (default on)
+var params = new URLSearchParams(location.search);
+var EXT_ID = null;
+var extReady = false;
+var wasBlurred = true;
+var intent = "dig";
+var statusTimer = null;
 
-function grouping() { return extReady && groupOn; }
+/* ---------- selection, remembered per intent ---------- */
+function storeKey(k) { return "sel3_" + k; }
 
-// ---- build rows ----
-PLATFORMS.forEach(function (p) {
-  var row = document.createElement("div");
-  row.className = "row";
-  row.style.borderLeftColor = p.color;
+function stored(k) {
+  var v = localStorage.getItem(storeKey(k));
+  if (v === null) { return INTENTS[k].keys.slice(); }   /* first visit: all on */
+  if (v === "") { return []; }
+  return v.split(",").filter(function (x) { return INTENTS[k].keys.indexOf(x) >= 0; });
+}
 
-  var cb = document.createElement("input");
-  cb.type = "checkbox"; cb.id = "cb-" + p.k;
-
-  var lb = document.createElement("label");
-  lb.htmlFor = cb.id;
-  lb.innerHTML = p.icon + " " + p.name + (p.sub ? ' <span class="sub">' + p.sub + "</span>" : "");
-
-  var one = document.createElement("a");
-  one.className = "one"; one.textContent = "↗";
-  one.target = "_blank"; one.rel = "noopener";
-  one.title = "Open only " + p.name;
-  one.dataset.k = p.k;
-
-  row.appendChild(cb); row.appendChild(lb); row.appendChild(one);
-  rows.appendChild(row);
-
-  cb.addEventListener("change", persist);
-});
-
-// ---- state ----
 function selected() {
-  return PLATFORMS.filter(function (p) {
-    return document.getElementById("cb-" + p.k).checked;
-  }).map(function (p) { return p.k; });
-}
-
-function setSelection(keys) {
-  PLATFORMS.forEach(function (p) {
-    document.getElementById("cb-" + p.k).checked = keys.indexOf(p.k) > -1;
+  var out = [];
+  INTENTS[intent].keys.forEach(function (k) {
+    var cb = document.getElementById("cb_" + k);
+    if (cb && cb.checked) { out.push(k); }
   });
-  sync();
+  return out;
 }
 
-function persist() {
-  try { localStorage.setItem("sel2", selected().join(",")); } catch (e) {}
-  sync();
+function persist() { localStorage.setItem(storeKey(intent), selected().join(",")); }
+
+/* ---------- rendering ---------- */
+function renderSegs() {
+  segsEl.innerHTML = "";
+  ORDER.forEach(function (k) {
+    var d = document.createElement("div");
+    d.className = "seg" + (k === intent ? " on" : "");
+    d.textContent = INTENTS[k].emoji + " " + INTENTS[k].label;
+    d.onclick = function () { setIntent(k); };
+    segsEl.appendChild(d);
+  });
 }
+
+function renderRows() {
+  var on = stored(intent);
+  rowsEl.innerHTML = "";
+  INTENTS[intent].keys.forEach(function (k) {
+    var p = PLATFORMS[k];
+    var row = document.createElement("div");
+    row.className = "row";
+
+    var cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.id = "cb_" + k;
+    cb.checked = on.indexOf(k) >= 0;
+    cb.onchange = function () { persist(); sync(); };
+
+    var dot = document.createElement("span");
+    dot.className = "dot";
+    dot.style.background = p.dot;
+
+    var lab = document.createElement("label");
+    lab.htmlFor = "cb_" + k;
+    lab.innerHTML = p.name + (p.sub ? ' <span class="sub">' + p.sub + "</span>" : "");
+
+    var one = document.createElement("a");
+    one.className = "one";
+    one.textContent = "\u2197";
+    one.href = "#";
+    one.title = "Open only " + p.name;
+    one.onclick = function (e) { e.preventDefault(); openOne(k); };
+
+    row.appendChild(cb);
+    row.appendChild(dot);
+    row.appendChild(lab);
+    row.appendChild(one);
+    rowsEl.appendChild(row);
+  });
+}
+
+function setIntent(k) {
+  if (!INTENTS[k]) { return; }
+  intent = k;
+  localStorage.setItem("intent", k);
+  renderSegs();
+  renderRows();
+  sync();
+  box.focus();
+}
+
+function grouping() { return extReady && grp.checked; }
 
 function sync() {
   var v = box.value.trim();
   var n = selected().length;
-  go.disabled = !v || n === 0;
-  go.textContent = n === 0 ? "Select at least one platform"
-                 : !v      ? "Type something to search"
-                 : grouping() && n > 1
-                   ? "Search selected (" + n + ") → group"
-                   : "Search selected (" + n + ")";
-  PLATFORMS.forEach(function (p) {
-    var a = document.querySelector('.one[data-k="' + p.k + '"]');
-    if (v) { a.href = p.url(v); a.style.opacity = 1; }
-    else { a.removeAttribute("href"); a.style.opacity = .3; }
-  });
+  catEl.style.display = isCat(v) ? "block" : "none";
+
+  if (!n) { goEl.disabled = true; goEl.textContent = "Select at least one platform"; return; }
+  if (!v) { goEl.disabled = true; goEl.textContent = "Type something to search"; return; }
+  goEl.disabled = false;
+  goEl.textContent = "Search " + INTENTS[intent].emoji + " " + INTENTS[intent].label
+    + " (" + n + ")" + (grouping() ? " \u2192 group" : "");
 }
 
-function say(txt) {
-  statusEl.textContent = txt;
-  statusEl.style.display = "block";
-  setTimeout(function () { statusEl.style.display = "none"; }, 4000);
-}
-
-// ---- mode display ----
 function renderMode() {
-  grp.checked  = groupOn;
-  grp.disabled = !extReady;
-  grpwrap.className = extReady ? "opt" : "opt disabled";
-  grpsub.textContent = !extReady
-    ? "companion extension not detected"
-    : groupOn
-      ? "results open together in one named group"
-      : "results open as separate tabs";
-
-  modeEl.innerHTML = !extReady
-    ? 'grouper <b>not installed</b> — results open as separate tabs'
-    : groupOn
-      ? 'tab grouping <b>active</b> — results arrive in one named group'
-      : 'tab grouping <b>paused</b> — results open as separate tabs';
-
+  if (!extReady) {
+    modeEl.innerHTML = "Music Finder <span>&middot; grouper <b>not installed</b></span>";
+    grpsub.textContent = "extension not detected \u2014 results open as separate tabs";
+    grpwrap.className = "opt disabled";
+    grp.disabled = true;
+  } else if (grp.checked) {
+    modeEl.innerHTML = "Music Finder <span>&middot; tab grouping <b>active</b></span>";
+    grpsub.textContent = "results land in one coloured group";
+    grpwrap.className = "opt";
+    grp.disabled = false;
+  } else {
+    modeEl.innerHTML = "Music Finder <span>&middot; tab grouping <b>paused</b></span>";
+    grpsub.textContent = "tick to group results again";
+    grpwrap.className = "opt";
+    grp.disabled = false;
+  }
   sync();
 }
 
-function setExt(ok) { extReady = ok; renderMode(); }
+function say(msg) {
+  statusEl.textContent = msg;
+  if (statusTimer) { clearTimeout(statusTimer); }
+  if (msg) { statusTimer = setTimeout(function () { statusEl.textContent = ""; }, 4000); }
+}
 
-// ---- extension detection ----
+/* ---------- extension detection ---------- */
 function hasExtApi() {
   return typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.sendMessage;
 }
 
-function probe() {
-  var cands = EXT_IDS.filter(function (id) { return id.indexOf("PASTE_") !== 0; });
-  if (!hasExtApi() || !cands.length) { setExt(false); return; }
-
-  var i = 0;
-  (function next() {
-    if (i >= cands.length) { setExt(false); return; }
-    var id = cands[i++];
-    try {
-      chrome.runtime.sendMessage(id, { type: "ping" }, function () {
-        if (!chrome.runtime.lastError) { EXT_ID = id; setExt(true); }
-        else next();
-      });
-    } catch (e) { next(); }
-  })();
+function setExt(id) {
+  EXT_ID = id;
+  extReady = !!id;
+  renderMode();
 }
 
-// ---- fallback launching (no grouping) ----
-function openViaLink(url) {
-  var a = document.createElement("a");
-  a.href = url; a.target = "_blank"; a.rel = "noopener";
-  document.body.appendChild(a); a.click(); a.remove();
+function probe(i) {
+  if (!hasExtApi() || i >= EXT_IDS.length) { setExt(null); return; }
+  var id = EXT_IDS[i];
+  try {
+    chrome.runtime.sendMessage(id, { type: "ping" }, function (res) {
+      if (!chrome.runtime.lastError && res && res.ok) { setExt(id); }
+      else { probe(i + 1); }
+    });
+  } catch (e) { probe(i + 1); }
 }
 
-function showBlocked(keys, v) {
+/* ---------- opening ---------- */
+function showBlocked(urls) {
   fallback.innerHTML = "";
-  if (!keys.length) { blockwrap.style.display = "none"; return; }
-  keys.forEach(function (k) {
-    var p = MAP[k];
+  urls.forEach(function (u) {
     var a = document.createElement("a");
     a.className = "fb";
-    a.href = p.url(v);
-    a.target = "_blank"; a.rel = "noopener";
-    a.style.background = p.color;
-    a.textContent = p.icon + " Open " + p.name + (p.sub ? " (" + p.sub + ")" : "");
-    a.addEventListener("click", function () {
-      a.style.opacity = .35; a.textContent = "✓ opened";
-    });
+    a.href = u;
+    a.target = "_blank";
+    a.rel = "noopener";
+    try { a.textContent = "\u2192 " + new URL(u).hostname.replace(/^www\./, ""); }
+    catch (e) { a.textContent = "\u2192 open"; }
     fallback.appendChild(a);
   });
   blockwrap.style.display = "block";
 }
 
-function fallbackRun(keys, v) {
-  openViaLink(MAP[keys[0]].url(v));
+function openPlain(urls) {
   var blocked = [];
-  for (var i = 1; i < keys.length; i++) {
-    var w = window.open(MAP[keys[i]].url(v), "_blank");
-    if (!w) blocked.push(keys[i]);
-  }
-  showBlocked(blocked, v);
+  urls.forEach(function (u) {
+    var w = window.open(u, "_blank");
+    if (!w) { blocked.push(u); }
+  });
+  if (blocked.length) { showBlocked(blocked); }
+  else { say("Opened " + urls.length + " tab" + (urls.length > 1 ? "s" : "")); }
 }
 
-// ---- main ----
-function run() {
+function fire(keys, title, color) {
   var v = box.value.trim();
-  var keys = selected();
-  if (!v || !keys.length) return;
-
+  if (!v || !keys.length) { return; }
+  var c = isCat(v);
+  var urls = keys.map(function (k) { return PLATFORMS[k].url(v, c); });
   blockwrap.style.display = "none";
 
-  if (grouping() && EXT_ID) {
-    var urls = keys.map(function (k) { return MAP[k].url(v); });
-    try {
-      chrome.runtime.sendMessage(EXT_ID, { type: "openGroup", urls: urls, title: v },
-        function (res) {
-          if (chrome.runtime.lastError || !res || !res.ok) {
-            setExt(false);
-            fallbackRun(keys, v);
-          } else {
-            say("✓ opened " + res.count + " tabs in a group");
-          }
-        });
-      return;
-    } catch (e) { setExt(false); }
+  if (grouping()) {
+    chrome.runtime.sendMessage(EXT_ID,
+      { type: "openGroup", urls: urls, title: title, color: color },
+      function (res) {
+        if (chrome.runtime.lastError || !res || !res.ok) { setExt(null); openPlain(urls); }
+        else { say("Opened " + res.count + " tabs in a group"); }
+      });
+  } else {
+    openPlain(urls);
   }
-
-  fallbackRun(keys, v);
 }
 
-// ---- init ----
-var params = new URLSearchParams(location.search);
-var pq = params.get("q");
-var ps = params.get("s");
-var pg = params.get("g");
-
-box.value = pq ? pq : "";
-
-// grouping preference: URL param wins (one-off), else saved choice, else ON
-if (pg === "0" || pg === "1") {
-  groupOn = pg === "1";
-} else {
-  var savedG = null;
-  try { savedG = localStorage.getItem("grp"); } catch (e) {}
-  groupOn = savedG === null ? true : savedG === "1";
+function openOne(k) {
+  var v = box.value.trim();
+  if (!v) { say("Type something first"); box.focus(); return; }
+  window.open(PLATFORMS[k].url(v, isCat(v)), "_blank");
 }
 
-var initSel;
-if (ps) initSel = PRESETS[ps] || ps.split(",");
-else {
-  var saved = null;
-  try { saved = localStorage.getItem("sel2"); } catch (e) {}
-  initSel = saved !== null ? (saved ? saved.split(",") : []) : PRESETS.digging;
+function runIntent() {
+  var v = box.value.trim();
+  if (!v) { box.focus(); return; }
+  fire(selected(), INTENTS[intent].emoji + " " + v, INTENTS[intent].color);
 }
-setSelection(initSel);
-renderMode();
-box.focus();
-box.select();
-probe();
 
-grp.addEventListener("change", function () {
-  groupOn = grp.checked;
-  try { localStorage.setItem("grp", groupOn ? "1" : "0"); } catch (e) {}
-  renderMode();
-  say(groupOn ? "grouping on" : "grouping off");
-});
+function runAll() {
+  var v = box.value.trim();
+  if (!v) { box.focus(); return; }
+  var keys = [];
+  ORDER.forEach(function (k) {
+    stored(k).forEach(function (p) { if (keys.indexOf(p) < 0) { keys.push(p); } });
+  });
+  fire(keys, "\uD83C\uDFA7 " + v, "purple");
+}
 
-// clicking into the field selects everything (first click only, like the address bar)
-var wasBlurred = false;
-box.addEventListener("mousedown", function () {
-  wasBlurred = document.activeElement !== box;
-});
+/* ---------- input behaviour ---------- */
+box.addEventListener("mousedown", function () { wasBlurred = document.activeElement !== box; });
 box.addEventListener("mouseup", function (e) {
-  if (wasBlurred && box.value) { e.preventDefault(); box.select(); }
-  wasBlurred = false;
+  if (wasBlurred) { e.preventDefault(); box.select(); }
 });
 box.addEventListener("focus", function () {
-  if (box.value) setTimeout(function () { box.select(); }, 0);
+  if (wasBlurred) { setTimeout(function () { box.select(); }, 0); }
+});
+box.addEventListener("blur", function () { wasBlurred = true; });
+box.addEventListener("input", sync);
+
+goEl.onclick = runIntent;
+
+grp.onchange = function () {
+  localStorage.setItem("grp", grp.checked ? "1" : "0");
+  renderMode();
+};
+
+document.addEventListener("keydown", function (e) {
+  if (e.key === "Enter") {
+    if (e.metaKey || e.ctrlKey) { runAll(); } else { runIntent(); }
+    return;
+  }
+  if (e.key === "Escape") {
+    box.value = "";
+    blockwrap.style.display = "none";
+    say("");
+    sync();
+    box.focus();
+    return;
+  }
+  if (document.activeElement !== box && (e.key === "1" || e.key === "2" || e.key === "3")) {
+    setIntent(ORDER[Number(e.key) - 1]);
+  }
 });
 
-box.addEventListener("input", function () { sync(); blockwrap.style.display = "none"; });
-box.addEventListener("keydown", function (e) {
-  if (e.key === "Enter") run();
-  if (e.key === "Escape") { box.value = ""; sync(); blockwrap.style.display = "none"; }
-});
-go.addEventListener("click", run);
-document.querySelectorAll(".chip").forEach(function (c) {
-  c.addEventListener("click", function () {
-    setSelection(PRESETS[c.dataset.preset]);
-    persist();
-  });
-});
+/* ---------- boot ---------- */
+(function init() {
+  var qp = params.get("q");
+  box.value = qp ? qp : "";
+
+  var sp = params.get("s");
+  var remembered = localStorage.getItem("intent");
+  if (sp && INTENTS[sp]) { intent = sp; }
+  else if (remembered && INTENTS[remembered]) { intent = remembered; }
+  else { intent = "dig"; }
+
+  var g = params.get("g");
+  grp.checked = (g !== null) ? (g === "1") : (localStorage.getItem("grp") !== "0");
+
+  renderSegs();
+  renderRows();
+  renderMode();
+  box.focus();
+  probe(0);
+})();
 </script>
 </body>
 </html>
