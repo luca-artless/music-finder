@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🎧 Music Finder</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, sans-serif; background:#0f0f0f;
+         color:#fff; display:flex; justify-content:center; padding:10vh 16px; margin:0; }
+  .card { width:100%; max-width:380px; background:#181818; border:1px solid #333;
+          border-radius:14px; padding:22px; }
+  h1 { margin:0 0 14px; font-size:16px; }
+  input { width:100%; padding:13px; font-size:15px; border-radius:8px;
+          border:1px solid #333; background:#242424; color:#22d3ee; font-weight:700; }
+  a.btn { display:block; margin-top:10px; padding:13px; border-radius:8px; color:#fff;
+          text-decoration:none; font-weight:700; font-size:14px; transition:opacity .15s; }
+  .bc{background:#1da0c3} .bn{background:#14778f} .sc{background:#ff5500}
+  .sp{background:#1db954} .yt{background:#cc181e}
+  .off { opacity:.35; pointer-events:none; }
+  .hint { font-size:11px; color:#777; margin-top:14px; line-height:1.5; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>🎧 Music Finder</h1>
+  <input id="q" placeholder="Artist - Title (Label)" autocomplete="off" autofocus>
+  <a class="btn bc" id="bc" target="_blank" rel="noopener">💙 Bandcamp (Google site:)</a>
+  <a class="btn bn" id="bn" target="_blank" rel="noopener">💙 Bandcamp (native)</a>
+  <a class="btn sc" id="sc" target="_blank" rel="noopener">🧡 SoundCloud</a>
+  <a class="btn sp" id="sp" target="_blank" rel="noopener">🟢 Spotify</a>
+  <a class="btn yt" id="yt" target="_blank" rel="noopener">🔴 YouTube</a>
+  <div class="hint">Enter = Bandcamp · Esc = clear<br>Label parentheticals are stripped for Spotify &amp; SoundCloud.</div>
+</div>
+<script>
+  var P = "https://";
+  var BUILD = {
+    bc: function (v) { return P + "www.google.com/search?q=" + encodeURIComponent("site:bandcamp.com/album " + v); },
+    bn: function (v) { return P + "bandcamp.com/search?item_type=a&q=" + encodeURIComponent(v); },
+    sc: function (v) { return P + "soundcloud.com/search?q=" + encodeURIComponent(clean(v)); },
+    sp: function (v) { return P + "open.spotify.com/search/" + encodeURIComponent(clean(v)); },
+    yt: function (v) { return P + "www.youtube.com/results?search_query=" + encodeURIComponent(v); }
+  };
+
+  function clean(v) { return v.replace(/\s*\([^)]*\)\s*/g, " ").trim(); }
+
+  var box = document.getElementById("q");
+
+  function sync() {
+    var v = box.value.trim();
+    for (var k in BUILD) {
+      var a = document.getElementById(k);
+      if (v) { a.href = BUILD[k](v); a.className = a.className.replace(" off", ""); }
+      else { a.removeAttribute("href"); if (a.className.indexOf("off") < 0) a.className += " off"; }
+    }
+    try { if (v) localStorage.setItem("last", v); } catch (e) {}
+  }
+
+  var param = new URLSearchParams(location.search).get("q");
+  if (param) { box.value = param; }
+  else { try { box.value = localStorage.getItem("last") || ""; } catch (e) {} }
+  box.select();
+  sync();
+
+  box.addEventListener("input", sync);
+  box.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") document.getElementById("bc").click();
+    if (e.key === "Escape") { box.value = ""; sync(); }
+  });
+</script>
+</body>
+</html>
