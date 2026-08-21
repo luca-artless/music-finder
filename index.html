@@ -64,7 +64,7 @@
 
   <div class="hint">
     Enter = search selected · Esc = clear · ↗ = open that one only<br>
-    Platform selection is remembered. Label parentheticals are stripped for Discogs, Spotify &amp; SoundCloud.
+    Platform selection is remembered. Label parentheticals are stripped for Bandcamp, Discogs, Spotify &amp; SoundCloud.
   </div>
 </div>
 
@@ -74,10 +74,10 @@ var P = "https://";
 function clean(v) { return v.replace(/\s*\([^)]*\)\s*/g, " ").trim(); }
 
 var PLATFORMS = [
-  { k:"bc", name:"Bandcamp",   sub:"Google site:",  icon:"💙", color:"#1da0c3",
+  { k:"bn", name:"Bandcamp",   sub:"native",        icon:"💙", color:"#1da0c3",
+    url:function(v){ return P+"bandcamp.com/search?item_type=a&q="+encodeURIComponent(clean(v)); } },
+  { k:"bc", name:"Bandcamp",   sub:"via Google",    icon:"💙", color:"#14778f",
     url:function(v){ return P+"www.google.com/search?q="+encodeURIComponent("site:bandcamp.com/album "+v); } },
-  { k:"bn", name:"Bandcamp",   sub:"native search", icon:"💙", color:"#14778f",
-    url:function(v){ return P+"bandcamp.com/search?item_type=a&q="+encodeURIComponent(v); } },
   { k:"dc", name:"Discogs",    sub:"releases",      icon:"⚫", color:"#8f8f8f",
     url:function(v){ return P+"www.discogs.com/search/?type=release&q="+encodeURIComponent(clean(v)); } },
   { k:"sc", name:"SoundCloud", sub:"",              icon:"🧡", color:"#ff5500",
@@ -89,7 +89,7 @@ var PLATFORMS = [
 ];
 
 var PRESETS = {
-  digging:   ["bc","dc","sc"],
+  digging:   ["bn","dc","sc"],
   streaming: ["sp","yt"],
   all:       PLATFORMS.map(function(p){ return p.k; }),
   none:      []
@@ -98,11 +98,11 @@ var PRESETS = {
 var MAP = {};
 PLATFORMS.forEach(function (p) { MAP[p.k] = p; });
 
-var box      = document.getElementById("q");
-var go       = document.getElementById("go");
-var rows     = document.getElementById("rows");
+var box       = document.getElementById("q");
+var go        = document.getElementById("go");
+var rows      = document.getElementById("rows");
 var blockwrap = document.getElementById("blockwrap");
-var fallback = document.getElementById("fallback");
+var fallback  = document.getElementById("fallback");
 
 // ---- build rows ----
 PLATFORMS.forEach(function (p) {
