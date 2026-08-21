@@ -10,7 +10,9 @@
          color:#fff; display:flex; justify-content:center; padding:6vh 16px 12vh; margin:0; }
   .card { width:100%; max-width:400px; background:#181818; border:1px solid #333;
           border-radius:14px; padding:22px; }
-  h1 { margin:0 0 14px; font-size:16px; }
+  h1 { margin:0 0 4px; font-size:16px; }
+  .mode { font-size:10.5px; color:#666; margin-bottom:12px; }
+  .mode b { color:#22d3ee; }
   input[type=text] { width:100%; padding:13px; font-size:15px; border-radius:8px;
           border:1px solid #333; background:#242424; color:#22d3ee; font-weight:700; }
   .presets { display:flex; gap:6px; margin:12px 0 4px; flex-wrap:wrap; }
@@ -29,6 +31,8 @@
   #go { width:100%; margin-top:16px; padding:15px; font-size:15px; font-weight:800;
         border:none; border-radius:9px; background:#22d3ee; color:#06232a; cursor:pointer; }
   #go:disabled { background:#2a2a2a; color:#666; cursor:default; }
+  #status { display:none; margin-top:11px; font-size:11.5px; color:#4ade80;
+        text-align:center; font-weight:600; }
   #blockwrap { display:none; margin-top:14px; padding:12px; border-radius:9px;
           background:#3a2a12; border:1px solid #7a5a22; }
   #blockwrap .msg { font-size:11.5px; color:#f5c869; line-height:1.55; margin-bottom:9px; }
@@ -41,6 +45,8 @@
 <body>
 <div class="card">
   <h1>🎧 Music Finder</h1>
+  <div class="mode" id="mode">checking grouper…</div>
+
   <input type="text" id="q" placeholder="Artist - Title (Label)" autocomplete="off" autofocus>
 
   <div class="presets">
@@ -53,6 +59,7 @@
   <div class="rows" id="rows"></div>
 
   <button id="go">Search selected</button>
+  <div id="status"></div>
 
   <div id="blockwrap">
     <div class="msg">⚠️ Chrome blocked these tabs. Click to open them:</div>
@@ -64,27 +71,34 @@
 
   <div class="hint">
     Enter = search selected · Esc = clear · ↗ = open that one only<br>
-    Platform selection is remembered. Label parentheticals are stripped for Bandcamp, Discogs, Spotify &amp; SoundCloud.
+    To close a group: right-click its name in the tab strip → <b>Close group</b>.
   </div>
 </div>
 
 <script>
+// Add one ID per machine. Unpacked extensions get a different ID per folder path.
+var EXT_IDS = [
+  "eealalcjpafalomikjopkapfcpiimbdj"
+  // , "PASTE_SECOND_MAC_ID_HERE"
+];
+var EXT_ID = null;
+
 var P = "https://";
 
 function clean(v) { return v.replace(/\s*\([^)]*\)\s*/g, " ").trim(); }
 
 var PLATFORMS = [
-  { k:"bn", name:"Bandcamp",   sub:"native",        icon:"💙", color:"#1da0c3",
+  { k:"bn", name:"Bandcamp",   sub:"native",     icon:"💙", color:"#1da0c3",
     url:function(v){ return P+"bandcamp.com/search?item_type=a&q="+encodeURIComponent(clean(v)); } },
-  { k:"bc", name:"Bandcamp",   sub:"via Google",    icon:"💙", color:"#14778f",
+  { k:"bc", name:"Bandcamp",   sub:"via Google", icon:"💙", color:"#14778f",
     url:function(v){ return P+"www.google.com/search?q="+encodeURIComponent("site:bandcamp.com/album "+v); } },
-  { k:"dc", name:"Discogs",    sub:"releases",      icon:"⚫", color:"#8f8f8f",
+  { k:"dc", name:"Discogs",    sub:"releases",   icon:"⚫", color:"#8f8f8f",
     url:function(v){ return P+"www.discogs.com/search/?type=release&q="+encodeURIComponent(clean(v)); } },
-  { k:"sc", name:"SoundCloud", sub:"",              icon:"🧡", color:"#ff5500",
+  { k:"sc", name:"SoundCloud", sub:"",           icon:"🧡", color:"#ff5500",
     url:function(v){ return P+"soundcloud.com/search?q="+encodeURIComponent(clean(v)); } },
-  { k:"sp", name:"Spotify",    sub:"",              icon:"🟢", color:"#1db954",
+  { k:"sp", name:"Spotify",    sub:"",           icon:"🟢", color:"#1db954",
     url:function(v){ return P+"open.spotify.com/search/"+encodeURIComponent(clean(v)); } },
-  { k:"yt", name:"YouTube",    sub:"",              icon:"🔴", color:"#cc181e",
+  { k:"yt", name:"YouTube",    sub:"",           icon:"🔴", color:"#cc181e",
     url:function(v){ return P+"www.youtube.com/results?search_query="+encodeURIComponent(v); } }
 ];
 
@@ -101,8 +115,12 @@ PLATFORMS.forEach(function (p) { MAP[p.k] = p; });
 var box       = document.getElementById("q");
 var go        = document.getElementById("go");
 var rows      = document.getElementById("rows");
+var statusEl  = document.getElementById("status");
+var modeEl    = document.getElementById("mode");
 var blockwrap = document.getElementById("blockwrap");
 var fallback  = document.getElementById("fallback");
+
+var grouperReady = false;
 
 // ---- build rows ----
 PLATFORMS.forEach(function (p) {
@@ -154,7 +172,9 @@ function sync() {
   go.disabled = !v || n === 0;
   go.textContent = n === 0 ? "Select at least one platform"
                  : !v      ? "Type something to search"
-                 : "Search selected (" + n + ")";
+                 : grouperReady && n > 1
+                   ? "Search selected (" + n + ") → group"
+                   : "Search selected (" + n + ")";
   PLATFORMS.forEach(function (p) {
     var a = document.querySelector('.one[data-k="' + p.k + '"]');
     if (v) { a.href = p.url(v); a.style.opacity = 1; }
@@ -162,7 +182,43 @@ function sync() {
   });
 }
 
-// ---- launching ----
+function say(txt) {
+  statusEl.textContent = txt;
+  statusEl.style.display = "block";
+  setTimeout(function () { statusEl.style.display = "none"; }, 4000);
+}
+
+// ---- extension detection ----
+function hasExtApi() {
+  return typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.sendMessage;
+}
+
+function setMode(ok) {
+  grouperReady = ok;
+  modeEl.innerHTML = ok
+    ? 'tab grouping <b>active</b> — results arrive in one named group'
+    : 'tab grouping <b>off</b> — results open as separate tabs';
+  sync();
+}
+
+function probe() {
+  var cands = EXT_IDS.filter(function (id) { return id.indexOf("PASTE_") !== 0; });
+  if (!hasExtApi() || !cands.length) { setMode(false); return; }
+
+  var i = 0;
+  (function next() {
+    if (i >= cands.length) { setMode(false); return; }
+    var id = cands[i++];
+    try {
+      chrome.runtime.sendMessage(id, { type: "ping" }, function () {
+        if (!chrome.runtime.lastError) { EXT_ID = id; setMode(true); }
+        else next();
+      });
+    } catch (e) { next(); }
+  })();
+}
+
+// ---- fallback launching (no extension) ----
 function openViaLink(url) {
   var a = document.createElement("a");
   a.href = url; a.target = "_blank"; a.rel = "noopener";
@@ -188,17 +244,8 @@ function showBlocked(keys, v) {
   blockwrap.style.display = "block";
 }
 
-function run() {
-  var v = box.value.trim();
-  var keys = selected();
-  if (!v || !keys.length) return;
-
-  blockwrap.style.display = "none";
-
-  // first one via a real link — never blocked
+function fallbackRun(keys, v) {
   openViaLink(MAP[keys[0]].url(v));
-
-  // the rest via popups; collect any that got blocked
   var blocked = [];
   for (var i = 1; i < keys.length; i++) {
     var w = window.open(MAP[keys[i]].url(v), "_blank");
@@ -207,12 +254,39 @@ function run() {
   showBlocked(blocked, v);
 }
 
+// ---- main ----
+function run() {
+  var v = box.value.trim();
+  var keys = selected();
+  if (!v || !keys.length) return;
+
+  blockwrap.style.display = "none";
+
+  var urls = keys.map(function (k) { return MAP[k].url(v); });
+
+  if (grouperReady && EXT_ID) {
+    try {
+      chrome.runtime.sendMessage(EXT_ID, { type: "openGroup", urls: urls, title: v },
+        function (res) {
+          if (chrome.runtime.lastError || !res || !res.ok) {
+            setMode(false);
+            fallbackRun(keys, v);
+          } else {
+            say("✓ opened " + res.count + " tabs in a group");
+          }
+        });
+      return;
+    } catch (e) { setMode(false); }
+  }
+
+  fallbackRun(keys, v);
+}
+
 // ---- init ----
 var params = new URLSearchParams(location.search);
 var pq = params.get("q");
 var ps = params.get("s");
 
-// field starts EMPTY unless ?q= was passed
 box.value = pq ? pq : "";
 
 var initSel;
@@ -225,6 +299,7 @@ else {
 setSelection(initSel);
 box.focus();
 box.select();
+probe();
 
 box.addEventListener("input", function () { sync(); blockwrap.style.display = "none"; });
 box.addEventListener("keydown", function (e) {
