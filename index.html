@@ -28,7 +28,16 @@
   .row label .sub { font-weight:400; color:#888; font-size:11px; }
   .one { color:#888; text-decoration:none; font-size:15px; padding:0 4px; flex:none; }
   .one:hover { color:#22d3ee; }
-  #go { width:100%; margin-top:16px; padding:15px; font-size:15px; font-weight:800;
+  .opt { display:flex; align-items:center; gap:9px; margin-top:12px;
+         padding-top:12px; border-top:1px solid #2a2a2a; }
+  .opt input[type=checkbox] { width:16px; height:16px; accent-color:#22d3ee;
+         cursor:pointer; flex:none; }
+  .opt label { font-size:12px; color:#bbb; font-weight:600; cursor:pointer; }
+  .opt label .sub { display:block; font-weight:400; color:#666; font-size:10.5px;
+         margin-top:2px; }
+  .opt.disabled { opacity:.4; }
+  .opt.disabled label { cursor:default; }
+  #go { width:100%; margin-top:14px; padding:15px; font-size:15px; font-weight:800;
         border:none; border-radius:9px; background:#22d3ee; color:#06232a; cursor:pointer; }
   #go:disabled { background:#2a2a2a; color:#666; cursor:default; }
   #status { display:none; margin-top:11px; font-size:11.5px; color:#4ade80;
@@ -58,6 +67,13 @@
 
   <div class="rows" id="rows"></div>
 
+  <div class="opt" id="grpwrap">
+    <input type="checkbox" id="grp" checked>
+    <label for="grp">🗂 Group tabs
+      <span class="sub" id="grpsub">results open together in one named group</span>
+    </label>
+  </div>
+
   <button id="go">Search selected</button>
   <div id="status"></div>
 
@@ -78,7 +94,7 @@
 <script>
 // Add one ID per machine. Unpacked extensions get a different ID per folder path.
 var EXT_IDS = [
-  "eealalcjpafalomikjopkapfcpiimbdj"
+  "eealalcjpafalomikjopkapfcpiimbdX"
   // , "PASTE_SECOND_MAC_ID_HERE"
 ];
 var EXT_ID = null;
@@ -119,8 +135,14 @@ var statusEl  = document.getElementById("status");
 var modeEl    = document.getElementById("mode");
 var blockwrap = document.getElementById("blockwrap");
 var fallback  = document.getElementById("fallback");
+var grp       = document.getElementById("grp");
+var grpwrap   = document.getElementById("grpwrap");
+var grpsub    = document.getElementById("grpsub");
 
-var grouperReady = false;
+var extReady = false;   // is the companion extension installed & answering?
+var groupOn  = true;    // does the user WANT grouping? (default on)
+
+function grouping() { return extReady && groupOn; }
 
 // ---- build rows ----
 PLATFORMS.forEach(function (p) {
@@ -172,7 +194,7 @@ function sync() {
   go.disabled = !v || n === 0;
   go.textContent = n === 0 ? "Select at least one platform"
                  : !v      ? "Type something to search"
-                 : grouperReady && n > 1
+                 : grouping() && n > 1
                    ? "Search selected (" + n + ") → group"
                    : "Search selected (" + n + ")";
   PLATFORMS.forEach(function (p) {
@@ -188,37 +210,51 @@ function say(txt) {
   setTimeout(function () { statusEl.style.display = "none"; }, 4000);
 }
 
+// ---- mode display ----
+function renderMode() {
+  grp.checked  = groupOn;
+  grp.disabled = !extReady;
+  grpwrap.className = extReady ? "opt" : "opt disabled";
+  grpsub.textContent = !extReady
+    ? "companion extension not detected"
+    : groupOn
+      ? "results open together in one named group"
+      : "results open as separate tabs";
+
+  modeEl.innerHTML = !extReady
+    ? 'grouper <b>not installed</b> — results open as separate tabs'
+    : groupOn
+      ? 'tab grouping <b>active</b> — results arrive in one named group'
+      : 'tab grouping <b>paused</b> — results open as separate tabs';
+
+  sync();
+}
+
+function setExt(ok) { extReady = ok; renderMode(); }
+
 // ---- extension detection ----
 function hasExtApi() {
   return typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.sendMessage;
 }
 
-function setMode(ok) {
-  grouperReady = ok;
-  modeEl.innerHTML = ok
-    ? 'tab grouping <b>active</b> — results arrive in one named group'
-    : 'tab grouping <b>off</b> — results open as separate tabs';
-  sync();
-}
-
 function probe() {
   var cands = EXT_IDS.filter(function (id) { return id.indexOf("PASTE_") !== 0; });
-  if (!hasExtApi() || !cands.length) { setMode(false); return; }
+  if (!hasExtApi() || !cands.length) { setExt(false); return; }
 
   var i = 0;
   (function next() {
-    if (i >= cands.length) { setMode(false); return; }
+    if (i >= cands.length) { setExt(false); return; }
     var id = cands[i++];
     try {
       chrome.runtime.sendMessage(id, { type: "ping" }, function () {
-        if (!chrome.runtime.lastError) { EXT_ID = id; setMode(true); }
+        if (!chrome.runtime.lastError) { EXT_ID = id; setExt(true); }
         else next();
       });
     } catch (e) { next(); }
   })();
 }
 
-// ---- fallback launching (no extension) ----
+// ---- fallback launching (no grouping) ----
 function openViaLink(url) {
   var a = document.createElement("a");
   a.href = url; a.target = "_blank"; a.rel = "noopener";
@@ -262,21 +298,20 @@ function run() {
 
   blockwrap.style.display = "none";
 
-  var urls = keys.map(function (k) { return MAP[k].url(v); });
-
-  if (grouperReady && EXT_ID) {
+  if (grouping() && EXT_ID) {
+    var urls = keys.map(function (k) { return MAP[k].url(v); });
     try {
       chrome.runtime.sendMessage(EXT_ID, { type: "openGroup", urls: urls, title: v },
         function (res) {
           if (chrome.runtime.lastError || !res || !res.ok) {
-            setMode(false);
+            setExt(false);
             fallbackRun(keys, v);
           } else {
             say("✓ opened " + res.count + " tabs in a group");
           }
         });
       return;
-    } catch (e) { setMode(false); }
+    } catch (e) { setExt(false); }
   }
 
   fallbackRun(keys, v);
@@ -286,8 +321,18 @@ function run() {
 var params = new URLSearchParams(location.search);
 var pq = params.get("q");
 var ps = params.get("s");
+var pg = params.get("g");
 
 box.value = pq ? pq : "";
+
+// grouping preference: URL param wins (one-off), else saved choice, else ON
+if (pg === "0" || pg === "1") {
+  groupOn = pg === "1";
+} else {
+  var savedG = null;
+  try { savedG = localStorage.getItem("grp"); } catch (e) {}
+  groupOn = savedG === null ? true : savedG === "1";
+}
 
 var initSel;
 if (ps) initSel = PRESETS[ps] || ps.split(",");
@@ -297,9 +342,17 @@ else {
   initSel = saved !== null ? (saved ? saved.split(",") : []) : PRESETS.digging;
 }
 setSelection(initSel);
+renderMode();
 box.focus();
 box.select();
 probe();
+
+grp.addEventListener("change", function () {
+  groupOn = grp.checked;
+  try { localStorage.setItem("grp", groupOn ? "1" : "0"); } catch (e) {}
+  renderMode();
+  say(groupOn ? "grouping on" : "grouping off");
+});
 
 box.addEventListener("input", function () { sync(); blockwrap.style.display = "none"; });
 box.addEventListener("keydown", function (e) {
