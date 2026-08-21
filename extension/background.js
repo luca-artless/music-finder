@@ -1,44 +1,55 @@
-var ALLOWED_PREFIX = "https://luca-artless.github.io/";
-var COLORS = ["cyan", "blue", "purple", "pink", "orange", "green", "yellow", "red"];
+var ALLOWED_PREFIX = "https" + "://luca-artless.github.io/";
+var VALID_COLORS = ["grey","blue","red","yellow","green","pink","purple","cyan","orange"];
 
-async function openGroup(msg) {
+function openGroup(msg, sendResponse) {
+  var urls = Array.isArray(msg.urls) ? msg.urls : [];
+  if (!urls.length) { sendResponse({ ok: false, error: "no urls" }); return; }
+
   var ids = [];
-  for (var i = 0; i < msg.urls.length; i++) {
-    var tab = await chrome.tabs.create({ url: msg.urls[i], active: false });
-    ids.push(tab.id);
-  }
+  var pending = urls.length;
 
-  var groupId = await chrome.tabs.group({ tabIds: ids });
-
-  await chrome.tabGroups.update(groupId, {
-    title: (msg.title || "Music Finder").slice(0, 45),
-    color: COLORS[Math.floor(Math.random() * COLORS.length)],
-    collapsed: false
+  urls.forEach(function (u, i) {
+    chrome.tabs.create({ url: u, active: false }, function (tab) {
+      if (tab) { ids[i] = tab.id; }
+      pending--;
+      if (pending === 0) { finish(); }
+    });
   });
 
-  await chrome.tabs.update(ids[0], { active: true });
-  return { ok: true, count: ids.length };
+  function finish() {
+    var live = ids.filter(function (x) { return typeof x === "number"; });
+    if (!live.length) { sendResponse({ ok: false, error: "no tabs" }); return; }
+
+    chrome.tabs.group({ tabIds: live }, function (groupId) {
+      var color = VALID_COLORS.indexOf(msg.color) >= 0
+        ? msg.color
+        : VALID_COLORS[Math.floor(Math.random() * VALID_COLORS.length)];
+
+      chrome.tabGroups.update(groupId, {
+        title: String(msg.title || "Music Finder").slice(0, 45),
+        color: color,
+        collapsed: false
+      }, function () {
+        chrome.tabs.update(live[0], { active: true }, function () {
+          sendResponse({ ok: true, count: live.length });
+        });
+      });
+    });
+  }
 }
 
 chrome.runtime.onMessageExternal.addListener(function (msg, sender, sendResponse) {
   if (!sender || !sender.url || sender.url.indexOf(ALLOWED_PREFIX) !== 0) {
-    sendResponse({ ok: false, error: "origin not allowed" });
+    sendResponse({ ok: false, error: "bad origin" });
     return;
   }
-
-  // the page pings on load to detect whether the grouper is installed
   if (msg && msg.type === "ping") {
-    sendResponse({ ok: true });
+    sendResponse({ ok: true, pong: true });
     return;
   }
-
-  if (!msg || msg.type !== "openGroup" || !Array.isArray(msg.urls) || !msg.urls.length) {
-    sendResponse({ ok: false, error: "bad payload" });
-    return;
+  if (msg && msg.type === "openGroup") {
+    openGroup(msg, sendResponse);
+    return true;
   }
-
-  openGroup(msg).then(sendResponse).catch(function (e) {
-    sendResponse({ ok: false, error: String(e) });
-  });
-  return true; // keeps the response channel open for async work
+  sendResponse({ ok: false, error: "bad payload" });
 });
